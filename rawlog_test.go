@@ -39,7 +39,7 @@ func TestX(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("[%v] '%v':'%v'\n", entry.Ts, string(entry.Key), string(entry.Bytes))
+		log.Printf("'%v':'%v'\n", string(entry.Key), string(entry.Bytes))
 	}
 	r.Close()
 	rbl.Close()

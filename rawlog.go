@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 // RawBytesLog holds an opened log
@@ -22,7 +21,6 @@ type Reader struct {
 type Entry struct {
 	Key   []byte
 	Bytes []byte
-	Ts    *time.Time
 }
 
 // Open creates or opens a raw log
@@ -38,15 +36,7 @@ func Open(logFileName string) (*RawBytesLog, error) {
 
 // Append a set of bytes for the given key
 func (rbl *RawBytesLog) Append(entry *Entry) error {
-	if entry.Ts == nil {
-		currentTs := time.Now()
-		entry.Ts = &currentTs
-	}
-	err := writeTimestamp(rbl.logFile, entry.Ts)
-	if err != nil {
-		return fmt.Errorf("Couldn't store log entry timestamp: %w", err)
-	}
-	err = writeBytesWithLen16(rbl.logFile, entry.Key)
+	err := writeBytesWithLen16(rbl.logFile, entry.Key)
 	if err != nil {
 		return fmt.Errorf("Couldn't store log entry key: %w", err)
 	}
@@ -76,13 +66,6 @@ func (rbl *RawBytesLog) Close() error {
 
 // Next gets the following log entry
 func (r *Reader) Next() (*Entry, error) {
-	ts, err := readTimestamp(r.logFile)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't retrieve log entry timestamp: %w", err)
-	}
 	key, err := readBytesWithLen16(r.logFile)
 	if err == io.EOF {
 		return nil, err
@@ -100,7 +83,7 @@ func (r *Reader) Next() (*Entry, error) {
 	return &Entry{
 		Key:   key,
 		Bytes: bytes,
-		Ts:    ts}, nil
+	}, nil
 }
 
 // Close stops reading and cleans open file reference
