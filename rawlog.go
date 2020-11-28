@@ -18,6 +18,13 @@ type Reader struct {
 	logFile *os.File
 }
 
+// Entry contains one log piece
+type Entry struct {
+	Key   []byte
+	Bytes []byte
+	Ts    *time.Time
+}
+
 // Open creates or opens a raw log
 func Open(logFileName string) (*RawBytesLog, error) {
 	logFile, err := os.OpenFile(logFileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
@@ -30,20 +37,20 @@ func Open(logFileName string) (*RawBytesLog, error) {
 }
 
 // Append a set of bytes for the given key
-func (rbl *RawBytesLog) Append(key []byte, bytes []byte, ts *time.Time) error {
-	if ts == nil {
+func (rbl *RawBytesLog) Append(entry *Entry) error {
+	if entry.Ts == nil {
 		currentTs := time.Now()
-		ts = &currentTs
+		entry.Ts = &currentTs
 	}
-	err := writeTimestamp(rbl.logFile, ts)
+	err := writeTimestamp(rbl.logFile, entry.Ts)
 	if err != nil {
 		return fmt.Errorf("Couldn't store log entry timestamp: %w", err)
 	}
-	err = writeBytesWithLen16(rbl.logFile, key)
+	err = writeBytesWithLen16(rbl.logFile, entry.Key)
 	if err != nil {
 		return fmt.Errorf("Couldn't store log entry key: %w", err)
 	}
-	err = writeBytesWithLen32(rbl.logFile, bytes)
+	err = writeBytesWithLen32(rbl.logFile, entry.Bytes)
 	if err != nil {
 		return fmt.Errorf("Couldn't store log entry bytes: %w", err)
 	}
@@ -68,29 +75,32 @@ func (rbl *RawBytesLog) Close() error {
 }
 
 // Next gets the following log entry
-func (r *Reader) Next() ([]byte, []byte, *time.Time, error) {
+func (r *Reader) Next() (*Entry, error) {
 	ts, err := readTimestamp(r.logFile)
 	if err == io.EOF {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Couldn't retrieve log entry timestamp: %w", err)
+		return nil, fmt.Errorf("Couldn't retrieve log entry timestamp: %w", err)
 	}
 	key, err := readBytesWithLen16(r.logFile)
 	if err == io.EOF {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Couldn't retrieve log entry key: %w", err)
+		return nil, fmt.Errorf("Couldn't retrieve log entry key: %w", err)
 	}
 	bytes, err := readBytesWithLen32(r.logFile)
 	if err == io.EOF {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Couldn't retrieve log entry bytes: %w", err)
+		return nil, fmt.Errorf("Couldn't retrieve log entry bytes: %w", err)
 	}
-	return key, bytes, ts, nil
+	return &Entry{
+		Key:   key,
+		Bytes: bytes,
+		Ts:    ts}, nil
 }
 
 // Close stops reading and cleans open file reference

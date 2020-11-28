@@ -11,19 +11,19 @@ func TestX(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	err = rbl.Append([]byte("alpha"), []byte("something"), nil)
+	err = rbl.Append(&Entry{Key: []byte("alpha"), Bytes: []byte("something")})
 	if err != nil {
 		panic(err)
 	}
-	err = rbl.Append([]byte("alpha"), []byte("something else"), nil)
+	err = rbl.Append(&Entry{Key: []byte("alpha"), Bytes: []byte("something else")})
 	if err != nil {
 		panic(err)
 	}
-	err = rbl.Append([]byte("alpha"), []byte("something different"), nil)
+	err = rbl.Append(&Entry{Key: []byte("alpha"), Bytes: []byte("something different")})
 	if err != nil {
 		panic(err)
 	}
-	err = rbl.Append([]byte("beta"), []byte("anything"), nil)
+	err = rbl.Append(&Entry{Key: []byte("beta"), Bytes: []byte("anything")})
 	if err != nil {
 		panic(err)
 	}
@@ -32,13 +32,15 @@ func TestX(t *testing.T) {
 		panic(err)
 	}
 	for {
-		key, bytes, ts, err := r.Next()
+		entry, err := r.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("[%v] '%v':'%v'\n", ts, string(key), string(bytes))
+		log.Printf("[%v] '%v':'%v'\n", entry.Ts, string(entry.Key), string(entry.Bytes))
 	}
+	r.Close()
+	rbl.Close()
 }
