@@ -1,7 +1,6 @@
 package rawlog
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -28,46 +27,6 @@ func Open(logFileName string) (*RawBytesLog, error) {
 	return &RawBytesLog{
 		logFile: logFile,
 	}, nil
-}
-
-func writeTimestamp(dst io.Writer, ts *time.Time) error {
-	tsBytes, err := ts.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("can't encode: %w", err)
-	}
-	_, err = dst.Write(tsBytes)
-	if err != nil {
-		return fmt.Errorf("can't write: %w", err)
-	}
-	return nil
-}
-
-func writeBytesWithLen16(dst io.Writer, bytes []byte) error {
-	itemLen := make([]byte, 2)
-	binary.LittleEndian.PutUint16(itemLen, uint16(len(bytes)))
-	_, err := dst.Write(itemLen)
-	if err != nil {
-		return fmt.Errorf("can't write: %w", err)
-	}
-	_, err = dst.Write(bytes)
-	if err != nil {
-		return fmt.Errorf("can't write: %w", err)
-	}
-	return nil
-}
-
-func writeBytesWithLen32(dst io.Writer, bytes []byte) error {
-	itemLen := make([]byte, 4)
-	binary.LittleEndian.PutUint32(itemLen, uint32(len(bytes)))
-	_, err := dst.Write(itemLen)
-	if err != nil {
-		return fmt.Errorf("can't write: %w", err)
-	}
-	_, err = dst.Write(bytes)
-	if err != nil {
-		return fmt.Errorf("can't write: %w", err)
-	}
-	return nil
 }
 
 // Append a set of bytes for the given key
@@ -106,65 +65,6 @@ func (rbl *RawBytesLog) NewReader() (*Reader, error) {
 // Close stops reading and cleans open file reference
 func (rbl *RawBytesLog) Close() error {
 	return rbl.logFile.Close()
-}
-
-func readTimestamp(src io.Reader) (*time.Time, error) {
-	tsBytes := make([]byte, 15)
-	n, err := src.Read(tsBytes)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil || n != 15 {
-		return nil, fmt.Errorf("can't read: %w", err)
-	}
-	ts := &time.Time{}
-	err = ts.UnmarshalBinary(tsBytes)
-	if err != nil {
-		return nil, fmt.Errorf("can't decode: %w", err)
-	}
-	return ts, nil
-}
-
-func readBytesWithLen16(src io.Reader) ([]byte, error) {
-	itemLen := make([]byte, 2)
-	n, err := src.Read(itemLen)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil || n != 2 {
-		return nil, fmt.Errorf("can't read: %w", err)
-	}
-	itemLenUint16 := binary.LittleEndian.Uint16(itemLen)
-	item := make([]byte, itemLenUint16)
-	n, err = src.Read(item)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil || n != int(itemLenUint16) {
-		return nil, fmt.Errorf("can't read: %w", err)
-	}
-	return item, nil
-}
-
-func readBytesWithLen32(src io.Reader) ([]byte, error) {
-	itemLen := make([]byte, 4)
-	n, err := src.Read(itemLen)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil || n != 4 {
-		return nil, fmt.Errorf("can't read: %w", err)
-	}
-	itemLenUint32 := binary.LittleEndian.Uint32(itemLen)
-	item := make([]byte, itemLenUint32)
-	n, err = src.Read(item)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil || n != int(itemLenUint32) {
-		return nil, fmt.Errorf("can't read: %w", err)
-	}
-	return item, nil
 }
 
 // Next gets the following log entry
